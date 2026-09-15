@@ -1,0 +1,8 @@
+# Agent-local settings: contain absolute paths to private knowledge bases.
+# Seeded by install.sh from docs/templates/settings.local.example.json
+.claude/settings.local.json
+.opencode/settings.local.json
+.agents/settings.local.json
+
+# Legacy standalone config (pre-settings.local.json layout)
+wiki-scitools.config.json

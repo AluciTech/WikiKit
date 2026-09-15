@@ -1,42 +1,264 @@
-# Aluci's Open Source Project Template
+# Wiki SciTools
 
-[![GitHub License](https://img.shields.io/github/license/AluciTech/aluci-open-source-template)](LICENSE)
-
-## Overview
-
-This repository provides a reusable template for creating open source projects that follow Aluci's engineering and documentation standards. It is intended for developers who want to quickly set up a new project with a consistent structure and best practices.
-
-## README Template
-
-You can use the following as a starting point for your project's README file. Make sure to fill in the placeholders with relevant information about your project.
-
-```markdown
-# Name of the project
-
-> Add a license or any other shield from [shields.io](https://shields.io/).
-
-In case of early development, please include a warning:
-
-> [!WARNING]
-> This project is in early development and is not yet ready for production use.
+[![GitHub
+License](https://img.shields.io/github/license/AluciTech/wiki-scitools)](LICENSE)
 
 ## Overview
 
-This project is [brief description]. Its goal is to [main goal or functionality].
+Commands and skills for [Claude
+Code](https://docs.anthropic.com/en/docs/claude-code),
+[OpenCode](https://opencode.ai/) and similar agents that work against a local
+[llm-wiki](https://github.com/nvk/llm-wiki) knowledge base. Point one at a
+draft, a thesis chapter, a paper or a README, and it grounds what it says in
+your own notes and sources: it fact-checks claims, or proposes rewrites of a
+passage.
+
+This is **not** a ghostwriter. Neither command edits your draft. `/wiki-rewrite`
+prints options for you to pick from; `/wiki-check` writes a separate report that
+quotes its evidence. What goes into the document is always your call.
+
+```mermaid
+graph LR
+    subgraph You["You decide"]
+        H1["Pick a passage or a draft,<br/>and a profile"]
+        H2["Choose a rewrite,<br/>act on findings"]
+    end
+
+    subgraph Agent["The agent does"]
+        A1["Detect the markup,<br/>resolve includes"]
+        A2["Search the wiki,<br/>then raw sources"]
+        A3["Propose rewrites or grade claims,<br/>quoting the evidence"]
+    end
+
+    H1 --> A1 --> A2 --> A3 --> H2
+```
 
 ## Setup
 
 ### Requirements
 
-If there are any requirements, please list them here.
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code),
+  [OpenCode](https://opencode.ai/), etc.
+- An [llm-wiki](https://github.com/nvk/llm-wiki) knowledge base on disk
+- [PSPDFKit/pdf-to-markdown](https://github.com/PSPDFKit/pdf-to-markdown)
 
-### Recommended Setup
+### Installation
 
-Always include a recommended setup section, even if it's just a single command.
+Run the install script with your agent's folder as the destination. It installs
+`commands/` and `skills/` under it.
+
+```bash
+# User scope: available in every project
+curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/install.sh | bash -s -- ~/.claude
+```
+
+```bash
+# Project scope: from the root of the project
+curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/install.sh | bash -s -- .claude
+```
+
+To pin a specific version:
+
+```bash
+curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/install.sh | bash -s -- --version v1.0.0 ~/.claude
+```
+
+The script asks before overwriting a file you already have. `--no-config` skips
+the config step below.
+
+### Configuration
+
+Config lives under a `wikiScitools` key in your agent folder's
+`$PROJECT_DIR/{.claude,.opencode,.agents}/settings.local.json`, next to the
+agent's own settings:
+
+```json
+{
+  "permissions": { "allow": ["Bash(npm test)"] },
+
+  "wikiScitools": {
+    "defaultProfile": "academic",
+
+    "knowledgeBase": "/absolute/path/to/your/wiki",
+    "wikiDir": "wiki",
+    "rawDir": "raw",
+    "convertedDir": "converted",
+    "reportsDir": "reports",
+
+    "profiles": {
+      "outreach": { "knowledgeBase": "/absolute/path/to/your/outreach/wiki" }
+    }
+  }
+}
+```
+
+The installer adds this block for you. If the file already exists, it backs it
+up and merges the block in without touching your other keys. If you already have
+a `wikiScitools` block, it leaves it alone. Then **set `knowledgeBase`** to your
+wiki's absolute path. That is the only required key. Template:
+[`docs/templates/settings.local.example.json`](docs/templates/settings.local.example.json).
+
+| Key | Meaning | Default |
+|---|---|---|
+| `knowledgeBase` | absolute path to the wiki root | **required** |
+| `defaultProfile` | profile used when none is passed | `plain` |
+| `wikiDir` | compiled articles, relative to `knowledgeBase` | `wiki` |
+| `rawDir` | raw sources, relative to `knowledgeBase` | `raw` |
+| `convertedDir` | cache of converted PDFs, relative to `knowledgeBase` | `converted` |
+| `reportsDir` | where `/wiki-check` writes, relative to the **draft** | `reports` |
+
+#### Where each path is anchored
+
+Every key points into your knowledge base except one. `reportsDir` points next
+to the document you are working on. The wiki is the library; the report goes on
+the desk, beside the paper.
+
+```
+/home/you/Obsidian/These/     <- knowledgeBase
+├── wiki/                     <- wikiDir       (read)
+├── raw/                      <- rawDir        (read)
+└── converted/                <- convertedDir  (written, kept forever)
+
+/home/you/projects/paper/     <- your draft lives here; not configured anywhere
+├── main.tex                  <- the file you pass to /wiki-check
+└── reports/                  <- reportsDir    (written)
+    └── review_v1.md
+```
+
+So `reportsDir` is a folder *name*, not a location. Set it to `audits` and
+reports land in `/home/you/projects/paper/audits/`. Reports follow the draft, so
+they version alongside the paper instead of scattering per-draft output through
+shared reference material. Give it an absolute path if you would rather collect
+every report in one place.
+
+Top-level keys are defaults. An entry under `profiles` overrides them for that
+profile, for example to point `outreach` at a different wiki. A profile with no
+entry inherits every default.
+
+These files hold absolute paths to private material and are gitignored. Do not
+commit yours.
+
+## Available commands
+
+| Command | Description | Writes |
+|---|---|---|
+| `/wiki-rewrite <file:line> [n] [profile]` | N drop-in rewrites of one passage, grounded in the wiki, each varying along a named axis | nothing, prints to the console |
+| `/wiki-check <file[:start-end]> [profile]` | Extracts every claim in a draft and grades it Accurate, False, Needs nuance or Unverifiable, quoting the evidence | one new `reports/review_v<N>.md` next to the draft |
+
+`/wiki-check` follows the draft's include directives, so pointing it at
+`main.tex` checks the whole document. It never overwrites an earlier report.
+Anything it cannot find is *Unverifiable*, never *False*: a *False* verdict
+always quotes the source that contradicts the draft.
 
 ## Usage
 
-Always include a usage section, even if it's just a single command.
+```bash
+/wiki-rewrite sections/intro.tex:356 3
+/wiki-rewrite chapters/methodo.typ:88 4 academic
+/wiki-rewrite docs/quickstart.md:40 3 technical
+/wiki-rewrite rfcs/0007-storage.md:21 3 engineering
+/wiki-rewrite src/parser.rs:114 2 plain
+
+/wiki-check main.tex
+/wiki-check thesis.typ academic
+/wiki-check abstract.tex:1-60 outreach
+/wiki-check docs/api.md technical
+```
+
+### Profiles
+
+Profiles are split by what the document is *for*, not by who writes it. An
+engineer writing a user guide wants `technical`; the same engineer writing an
+RFC wants `engineering`.
+
+| Profile | Audience | Job |
+|---|---|---|
+| `academic` | reviewers, peers in the field | defend a claim |
+| `outreach` | educated non-specialists | make a result understandable without deforming it |
+| `technical` | someone using the thing | get them to a working result |
+| `engineering` | peers reviewing a decision | make the reasoning auditable |
+| `plain` | whoever the document already addresses | handle it on its own terms |
+
+The profile changes the audit, not just the prose. `outreach` treats a dropped
+hedge as *False*; `academic` treats hedge drift as *Needs nuance*; `technical`
+treats a paraphrased flag name as *False*; `plain` never flags genre
+expectations.
+
+### Markup support
+
+LaTeX · Typst · Markdown · plain text · comments and docstrings in source files
+
+The markup is detected for each file: the extension gives a first guess and the
+surrounding lines decide. Citation keys, labels, cross-references, placeholder
+tokens and front matter are carried through verbatim. Include directives
+(`\input{}`, `\include{}`, `#include`, …) are resolved relative to the including
+file, with cycle detection and a depth limit.
+
+### PDF cache
+
+PDFs under `rawDir` are converted to Markdown once and kept under
+`convertedDir`, mirroring the raw tree:
+
+```
+<kb>/raw/papers/smith2020.pdf -> <kb>/converted/papers/smith2020.md
+```
+
+A conversion takes tens of seconds; a grep takes almost nothing. If you replace
+a PDF, the next run converts it again. Writes go to a `.partial` file first, so
+an interrupted run never leaves a truncated file in the cache. Nothing in these
+tools deletes anything: a failed conversion leaves a `.partial` that the next
+run overwrites.
+
+The cache is also worth searching directly:
+
+```bash
+grep -rn -i "<phrase>" "<kb>/converted/" --include='*.md'
+```
+
+Keep `convertedDir` on disk, but exclude it from the wiki's own indexing.
+
+## Maintainers
+
+### Releasing a new version
+
+1. Make sure all changes are committed and pushed to `main`.
+2. Tag the commit and push the tag:
+
+   ```bash
+   git tag v1.1.0
+   git push origin v1.1.0
+   ```
+
+3. The `release` workflow creates a GitHub Release with `install.sh` attached as
+   a downloadable asset.
+
+### Extending
+
+Each part lives in its own layer, so adding a genre or a markup language never
+means copying a pipeline:
+
+| Layer | Lives in | Shared across commands |
+|---|---|---|
+| Trigger and arguments | `commands/` | no, thin delegation |
+| Method and pipeline | `skills/<name>/SKILL.md` | no, one per command |
+| Profiles | `skills/_shared/profiles/*.md` | **yes** |
+| Markup handling | `skills/_shared/references/syntax-detection.md` | **yes** |
+| Config resolution | `skills/_shared/references/config-resolution.md` | **yes** |
+| PDF extraction | `skills/_shared/references/pdf-extraction.md` | **yes** |
+
+**A new profile.** Create `skills/_shared/profiles/<name>.md` with an
+audience/job line and five sections, each tagged with the command that uses it:
+`## Voice (wiki-rewrite)`, `## Variant axes (wiki-rewrite)`, `## Claims
+(wiki-check)`, `## Constraints (both)`, `## Syntax notes (both)`. Keep it under
+~45 lines, since it is loaded into the prompt.
+
+**A new markup language.** Add rows to `syntax-detection.md`: the extension
+table, the table of constructs to carry through, and the include table if the
+language has includes.
+
+**A new command.** Create `commands/<name>.md` (thin, delegating) and
+`skills/<name>/SKILL.md` (pipeline only), and read profiles, markup rules and
+config from `../_shared/`.
 
 ## License
 
@@ -46,12 +268,5 @@ See the [LICENSE](LICENSE) file for details.
 
 ## AI Usage Transparency
 
-This project uses AI tools such as ChatGPT to assist with development.
-For more details, see the [AI Usage Disclosure](AI_USAGE.md) file.
-```
-
-## License
-
-This project is licensed under the Apache License (Version 2.0).
-
-See the [LICENSE](LICENSE) file for details.
+This project uses AI tools to assist with development. For more details, see the
+[AI Usage Disclosure](AI_USAGE.md) file.

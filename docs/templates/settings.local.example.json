@@ -1,0 +1,15 @@
+{
+  "wikiScitools": {
+    "defaultProfile": "academic",
+
+    "knowledgeBase": "/absolute/path/to/your/wiki",
+    "wikiDir": "wiki",
+    "rawDir": "raw",
+    "convertedDir": "converted",
+    "reportsDir": "reports",
+
+    "profiles": {
+      "outreach": { "knowledgeBase": "/absolute/path/to/your/outreach/wiki" }
+    }
+  }
+}
