@@ -45,7 +45,7 @@ graph LR
 ### Installation
 
 Run the install script with your agent's folder as the destination. It installs
-`commands/` and `skills/` under it.
+`commands/` and `skills/` under it:
 
 ```bash
 curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/install.sh | bash -s -- .claude
@@ -54,7 +54,7 @@ curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/i
 To pin a specific version:
 
 ```bash
-curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/install.sh | bash -s -- --version v1.0.0 .claude
+curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/install.sh | bash -s -- --version v1.1.0 .claude
 ```
 
 The script asks before overwriting a file you already have. `--no-config` skips
@@ -182,35 +182,8 @@ LaTeX · Typst · Markdown · plain text · comments and docstrings in source fi
 The markup is detected for each file: the extension gives a first guess and the
 surrounding lines decide. Citation keys, labels, cross-references, placeholder
 tokens and front matter are carried through verbatim. Include directives
-(`\input{}`, `\include{}`, `#include`, …) are resolved relative to the including
+(`\input{}`, `\include{}`, `#include`, ...) are resolved relative to the including
 file, with cycle detection and a depth limit.
-
-### Raw sources
-
-Both commands read raw sources under `raw/`, the markdown `/wiki:ingest` wrote
-when the source was ingested. Neither one parses a PDF, converts anything or
-writes into your knowledge base.
-
-So a paper you dropped in `inbox/` and never ingested is invisible to them. When
-one is needed, the command stops and asks:
-
-```
-Ingest  smith2020.pdf is in inbox/, cited at intro.tex:42. Ingest it?
-        1) Ingest these now (Recommended)
-        2) Ingest the whole inbox (3 more files)
-        3) Skip, report as unverified
-```
-
-Pick one and it runs `/wiki:ingest` for you, then picks the audit back up with
-the source now under `raw/`. Every un-ingested source in a run is batched into
-that single question, so a long audit never turns into a prompt storm. Ingestion
-stays llm-wiki's job and the decision stays yours: nothing is written to your
-knowledge base unless you said yes. Note that `/wiki:ingest` may route a source
-to a topic wiki other than the one configured here.
-
-Agents that have a structured multiple-choice tool render that question with it;
-the rest print the numbered list and wait for your reply. Same question, same
-options, either way.
 
 ## Maintainers
 
@@ -220,8 +193,8 @@ options, either way.
 2. Tag the commit and push the tag:
 
    ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
+   git tag v1.1.0
+   git push origin v1.1.0
    ```
 
 3. The `release` workflow creates a GitHub Release with `install.sh` attached as
