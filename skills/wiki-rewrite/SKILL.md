@@ -1,7 +1,7 @@
 ---
 name: wiki-rewrite
 description: Rewrite or expand a targeted section of a draft, producing N distinct propositions grounded in a local LLM-wiki knowledge base. Markup-agnostic (LaTeX, Typst, Markdown, plain text, source comments) and personality-agnostic; voice comes from a shared profile (academic, outreach, technical, engineering, plain). Use when the user asks to rewrite, expand, reword or generate variants of a passage at a given file:line, or invokes /wiki-rewrite.
-allowed-tools: Bash(cat *), Bash(ls *), Bash(grep *), Bash(sed *), Bash(find *), Bash(npx @pspdfkit/pdf-to-markdown *), Read
+allowed-tools: Bash(cat *), Bash(ls *), Bash(grep *), Bash(sed *), Bash(find *), Read, AskUserQuestion, Skill
 ---
 
 # wiki-rewrite
@@ -23,8 +23,8 @@ If `target` is missing or malformed, ask. Do not guess a line number.
 
 ## Step 0 - Config and profile
 
-Follow `../_shared/references/config-resolution.md` to resolve `knowledgeBase`, `wikiDir`, `rawDir`,
-`convertedDir` and the shared directory.
+Follow `../_shared/references/config-resolution.md` to resolve `knowledgeBase` and the shared
+directory. The layout inside the knowledge base is llm-wiki's and fixed: `wiki/`, `raw/`, `inbox/`.
 
 Read `../_shared/profiles/<profile>.md`. Use its **Voice**, **Variant axes**, **Constraints** and
 **Syntax notes** sections; ignore **Claims** (that belongs to wiki-check). If the named profile has
@@ -49,13 +49,13 @@ one passage in one file.
 
 ## Step 3 - Ground the rewrite
 
-**Tier 1 - wiki.** `grep`/`ls` through `<knowledgeBase>/<wikiDir>/` for the passage's key concepts,
+**Tier 1 - wiki.** `grep`/`ls` through `<knowledgeBase>/wiki/` for the passage's key concepts,
 entities and citations. Align with definitions already settled there.
 
 **Tier 2 - raw sources.** Only if Tier 1 lacks a specific figure or finding the rewrite needs. Look
-under `<knowledgeBase>/<rawDir>/`; for PDFs follow `../_shared/references/pdf-extraction.md`, which
-keeps a permanent conversion cache under `<knowledgeBase>/<convertedDir>/`. Check the cache and
-`grep` it before converting anything.
+under `<knowledgeBase>/raw/`, following `../_shared/references/source-ingestion.md`. A source still
+in `<knowledgeBase>/inbox/` is not ingested yet: never read the binary, and ask before ingesting
+anything, per `../_shared/references/asking-the-user.md`.
 
 If neither tier supports a claim, write the proposition without it and say so. Never fabricate a
 citation, number or attribution.
@@ -80,5 +80,5 @@ If `n` exceeds the profile's axes, extend along the same logic and name each add
 3. Per proposition: heading naming its axis, the text in a code block, 1–2 sentences of rationale.
 4. Closing line on grounding: which wiki articles or raw sources were used, or that none were needed.
 
-Leave the conversion cache in place; it is knowledge-base content, not scratch. Delete nothing,
-not even a failed `.partial`; the next conversion overwrites it.
+Write nothing into the knowledge base either. A source only gets ingested if the user chose it
+when asked in Step 3; never on your own initiative.

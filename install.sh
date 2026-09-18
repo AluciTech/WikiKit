@@ -13,7 +13,7 @@ usage() {
   echo "Arguments:"
   echo "  <dest>   Agent config folder (e.g., .claude/ ~/.claude/ .opencode/ .agents/)"
   echo "           commands/ and skills/ are installed underneath it, and a"
-  echo "           wikiScitools config is merged into <dest>/settings.local.json."
+  echo "           wikiKit config is merged into <dest>/settings.local.json."
   echo ""
   echo "Options:"
   echo "  --version <tag>   Install a specific version (e.g., v1.0.0). Defaults to latest."
@@ -116,17 +116,17 @@ install_file() {
 
 TEMPLATE_PATH="docs/templates/settings.local.example.json"
 
-# Merge the wikiScitools config block into <dest>/settings.local.json. Never
+# Merge the wikiKit config block into <dest>/settings.local.json. Never
 # clobbers the file: the agent's own settings (permissions, env, ...) are
-# preserved, and an existing wikiScitools block is left exactly as the user
+# preserved, and an existing wikiKit block is left exactly as the user
 # edited it.
 install_config() {
   local target="$DEST_DIR/settings.local.json"
-  local tmpl merged
+  local tmpl merged backup
 
   # Already configured anywhere on the lookup path? Leave everything alone.
   for f in "$DEST_DIR/settings.local.json" "$HOME/.claude/settings.local.json"; do
-    if [ -f "$f" ] && grep -q '"wikiScitools"' "$f"; then
+    if [ -f "$f" ] && grep -q '"wikiKit"' "$f"; then
       echo "Config already present in $f - left untouched."
       return 0
     fi
@@ -135,7 +135,7 @@ install_config() {
            "$HOME/.config/wiki-scitools/config.json"; do
     if [ -f "$f" ]; then
       echo "Legacy config found at $f - left untouched."
-      echo "  -> current layout is a wikiScitools block in settings.local.json; migrate when convenient."
+      echo "  -> current layout is a wikiKit block in settings.local.json; migrate when convenient."
       return 0
     fi
   done
@@ -153,21 +153,21 @@ install_config() {
     mv "$tmpl" "$target"
     echo ""
     echo "Created $target"
-    echo "  -> EDIT IT: set wikiScitools.knowledgeBase to your wiki's absolute path."
+    echo "  -> EDIT IT: set wikiKit.knowledgeBase to your wiki's absolute path."
     return 0
   fi
 
-  # File exists and has no wikiScitools block: merge, preserving every existing
+  # File exists and has no wikiKit block: merge, preserving every existing
   # key.
   merged=$(mktemp) || { rm -f "$tmpl"; return 1; }
   if command -v jq >/dev/null 2>&1; then
-    jq -s '.[0] + {wikiScitools: .[1].wikiScitools}' "$target" "$tmpl" > "$merged" 2>/dev/null
+    jq -s '.[0] + {wikiKit: .[1].wikiKit}' "$target" "$tmpl" > "$merged" 2>/dev/null
   elif command -v python3 >/dev/null 2>&1; then
     python3 - "$target" "$tmpl" "$merged" <<'PY' 2>/dev/null
 import json, sys
 cur = json.load(open(sys.argv[1]))
 tpl = json.load(open(sys.argv[2]))
-cur["wikiScitools"] = tpl["wikiScitools"]
+cur["wikiKit"] = tpl["wikiKit"]
 json.dump(cur, open(sys.argv[3], "w"), indent=2, ensure_ascii=False)
 open(sys.argv[3], "a").write("\n")
 PY
@@ -176,17 +176,20 @@ PY
   fi
 
   if [ -s "$merged" ]; then
-    cp "$target" "$target.bak"
+    # Back up outside the project so the copy can never be committed.
+    backup=$(mktemp "${TMPDIR:-/tmp}/wiki-scitools-settings.local.json.XXXXXX") \
+      || { rm -f "$tmpl" "$merged"; return 1; }
+    cp "$target" "$backup"
     mv "$merged" "$target"
     echo ""
-    echo "Merged wikiScitools config into $target (backup: $target.bak)"
-    echo "  -> EDIT IT: set wikiScitools.knowledgeBase to your wiki's absolute path."
+    echo "Merged wikiKit config into $target (backup: $backup)"
+    echo "  -> EDIT IT: set wikiKit.knowledgeBase to your wiki's absolute path."
   else
     mv "$tmpl" "$DEST_DIR/settings.local.wiki-scitools.example.json"
     echo ""
     echo "Warning: neither jq nor python3 available - could not merge safely."
     echo "  Template written to $DEST_DIR/settings.local.wiki-scitools.example.json"
-    echo "  -> copy its wikiScitools block into $target by hand."
+    echo "  -> copy its wikiKit block into $target by hand."
   fi
   rm -f "$tmpl" "$merged"
 }

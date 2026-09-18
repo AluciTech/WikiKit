@@ -1,4 +1,4 @@
-# Wiki SciTools
+# WikiKit
 
 [![GitHub
 License](https://img.shields.io/github/license/AluciTech/wiki-scitools)](LICENSE)
@@ -39,8 +39,8 @@ graph LR
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code),
   [OpenCode](https://opencode.ai/), etc.
-- An [llm-wiki](https://github.com/nvk/llm-wiki) knowledge base on disk
-- [PSPDFKit/pdf-to-markdown](https://github.com/PSPDFKit/pdf-to-markdown)
+- An [llm-wiki](https://github.com/nvk/llm-wiki) knowledge base on disk, with its
+  `/wiki:ingest` command available for pulling new sources in
 
 ### Installation
 
@@ -48,19 +48,13 @@ Run the install script with your agent's folder as the destination. It installs
 `commands/` and `skills/` under it.
 
 ```bash
-# User scope: available in every project
-curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/install.sh | bash -s -- ~/.claude
-```
-
-```bash
-# Project scope: from the root of the project
 curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/install.sh | bash -s -- .claude
 ```
 
 To pin a specific version:
 
 ```bash
-curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/install.sh | bash -s -- --version v1.0.0 ~/.claude
+curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/install.sh | bash -s -- --version v1.0.0 .claude
 ```
 
 The script asks before overwriting a file you already have. `--no-config` skips
@@ -68,7 +62,7 @@ the config step below.
 
 ### Configuration
 
-Config lives under a `wikiScitools` key in your agent folder's
+Config lives under a `wikiKit` key in your agent folder's
 `$PROJECT_DIR/{.claude,.opencode,.agents}/settings.local.json`, next to the
 agent's own settings:
 
@@ -76,13 +70,10 @@ agent's own settings:
 {
   "permissions": { "allow": ["Bash(npm test)"] },
 
-  "wikiScitools": {
+  "wikiKit": {
     "defaultProfile": "academic",
 
     "knowledgeBase": "/absolute/path/to/your/wiki",
-    "wikiDir": "wiki",
-    "rawDir": "raw",
-    "convertedDir": "converted",
     "reportsDir": "reports",
 
     "profiles": {
@@ -94,34 +85,34 @@ agent's own settings:
 
 The installer adds this block for you. If the file already exists, it backs it
 up and merges the block in without touching your other keys. If you already have
-a `wikiScitools` block, it leaves it alone. Then **set `knowledgeBase`** to your
+a `wikiKit` block, it leaves it alone. Then **set `knowledgeBase`** to your
 wiki's absolute path. That is the only required key. Template:
 [`docs/templates/settings.local.example.json`](docs/templates/settings.local.example.json).
 
 | Key | Meaning | Default |
 |---|---|---|
-| `knowledgeBase` | absolute path to the wiki root | **required** |
+| `knowledgeBase` | absolute path to an llm-wiki topic wiki | **required** |
 | `defaultProfile` | profile used when none is passed | `plain` |
-| `wikiDir` | compiled articles, relative to `knowledgeBase` | `wiki` |
-| `rawDir` | raw sources, relative to `knowledgeBase` | `raw` |
-| `convertedDir` | cache of converted PDFs, relative to `knowledgeBase` | `converted` |
 | `reportsDir` | where `/wiki-check` writes, relative to the **draft** | `reports` |
+
+Three keys, and that is deliberate. What lives *inside* the knowledge base is
+llm-wiki's business: a topic wiki always has `wiki/`, `raw/` and `inbox/`, so
+there is nothing to configure and nothing to keep in sync. Point at the topic
+wiki (`<hub>/topics/<name>/`), not at the hub, which holds no content.
 
 #### Where each path is anchored
 
-Every key points into your knowledge base except one. `reportsDir` points next
-to the document you are working on. The wiki is the library; the report goes on
-the desk, beside the paper.
+`knowledgeBase` is the library; `reportsDir` is the desk, beside the paper.
 
 ```
-/home/you/Obsidian/These/     <- knowledgeBase
-├── wiki/                     <- wikiDir       (read)
-├── raw/                      <- rawDir        (read)
-└── converted/                <- convertedDir  (written, kept forever)
+/home/you/wiki/topics/these/  <- knowledgeBase; llm-wiki owns everything below
+├── wiki/                     <- compiled articles  (read)
+├── raw/                      <- ingested sources   (read)
+└── inbox/                    <- drop zone          (read)
 
 /home/you/projects/paper/     <- your draft lives here; not configured anywhere
 ├── main.tex                  <- the file you pass to /wiki-check
-└── reports/                  <- reportsDir    (written)
+└── reports/                  <- reportsDir         (written)
     └── review_v1.md
 ```
 
@@ -194,28 +185,32 @@ tokens and front matter are carried through verbatim. Include directives
 (`\input{}`, `\include{}`, `#include`, …) are resolved relative to the including
 file, with cycle detection and a depth limit.
 
-### PDF cache
+### Raw sources
 
-PDFs under `rawDir` are converted to Markdown once and kept under
-`convertedDir`, mirroring the raw tree:
+Both commands read raw sources under `raw/`, the markdown `/wiki:ingest` wrote
+when the source was ingested. Neither one parses a PDF, converts anything or
+writes into your knowledge base.
+
+So a paper you dropped in `inbox/` and never ingested is invisible to them. When
+one is needed, the command stops and asks:
 
 ```
-<kb>/raw/papers/smith2020.pdf -> <kb>/converted/papers/smith2020.md
+Ingest  smith2020.pdf is in inbox/, cited at intro.tex:42. Ingest it?
+        1) Ingest these now (Recommended)
+        2) Ingest the whole inbox (3 more files)
+        3) Skip, report as unverified
 ```
 
-A conversion takes tens of seconds; a grep takes almost nothing. If you replace
-a PDF, the next run converts it again. Writes go to a `.partial` file first, so
-an interrupted run never leaves a truncated file in the cache. Nothing in these
-tools deletes anything: a failed conversion leaves a `.partial` that the next
-run overwrites.
+Pick one and it runs `/wiki:ingest` for you, then picks the audit back up with
+the source now under `raw/`. Every un-ingested source in a run is batched into
+that single question, so a long audit never turns into a prompt storm. Ingestion
+stays llm-wiki's job and the decision stays yours: nothing is written to your
+knowledge base unless you said yes. Note that `/wiki:ingest` may route a source
+to a topic wiki other than the one configured here.
 
-The cache is also worth searching directly:
-
-```bash
-grep -rn -i "<phrase>" "<kb>/converted/" --include='*.md'
-```
-
-Keep `convertedDir` on disk, but exclude it from the wiki's own indexing.
+Agents that have a structured multiple-choice tool render that question with it;
+the rest print the numbered list and wait for your reply. Same question, same
+options, either way.
 
 ## Maintainers
 
@@ -225,8 +220,8 @@ Keep `convertedDir` on disk, but exclude it from the wiki's own indexing.
 2. Tag the commit and push the tag:
 
    ```bash
-   git tag v1.1.0
-   git push origin v1.1.0
+   git tag v1.0.0
+   git push origin v1.0.0
    ```
 
 3. The `release` workflow creates a GitHub Release with `install.sh` attached as
@@ -244,7 +239,8 @@ means copying a pipeline:
 | Profiles | `skills/_shared/profiles/*.md` | **yes** |
 | Markup handling | `skills/_shared/references/syntax-detection.md` | **yes** |
 | Config resolution | `skills/_shared/references/config-resolution.md` | **yes** |
-| PDF extraction | `skills/_shared/references/pdf-extraction.md` | **yes** |
+| Raw source access | `skills/_shared/references/source-ingestion.md` | **yes** |
+| Asking the user | `skills/_shared/references/asking-the-user.md` | **yes** |
 
 **A new profile.** Create `skills/_shared/profiles/<name>.md` with an
 audience/job line and five sections, each tagged with the command that uses it:

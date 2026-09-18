@@ -1,11 +1,8 @@
 {
-  "wikiScitools": {
+  "wikiKit": {
     "defaultProfile": "academic",
 
     "knowledgeBase": "/absolute/path/to/your/wiki",
-    "wikiDir": "wiki",
-    "rawDir": "raw",
-    "convertedDir": "converted",
     "reportsDir": "reports",
 
     "profiles": {

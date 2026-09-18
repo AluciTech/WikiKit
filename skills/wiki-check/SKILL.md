@@ -1,7 +1,7 @@
 ---
 name: wiki-check
 description: Fact-check a draft against a local LLM-wiki knowledge base. Resolves multi-file documents, extracts every claim, verifies it against wiki articles then raw sources, categorises each as accurate/false/needs-nuance/unverifiable, and writes a versioned report. Markup-agnostic (LaTeX, Typst, Markdown, plain text) and genre-aware via a shared profile. Use when the user asks to audit, fact-check, verify claims in, or peer-review a draft, or invokes /wiki-check.
-allowed-tools: Bash(cat *), Bash(ls *), Bash(grep *), Bash(sed *), Bash(find *), Bash(npx @pspdfkit/pdf-to-markdown *), Bash(mkdir *), Read, Write
+allowed-tools: Bash(cat *), Bash(ls *), Bash(grep *), Bash(sed *), Bash(find *), Bash(mkdir *), Read, Write, AskUserQuestion, Skill
 ---
 
 # wiki-check
@@ -19,8 +19,9 @@ This skill owns the **pipeline only**. Genre, markup and config live in `../_sha
 
 ## Step 0 - Config and profile
 
-Follow `../_shared/references/config-resolution.md` to resolve `knowledgeBase`, `wikiDir`, `rawDir`,
-`convertedDir`, `reportsDir` and the shared directory.
+Follow `../_shared/references/config-resolution.md` to resolve `knowledgeBase`, `reportsDir` and
+the shared directory. The layout inside the knowledge base is llm-wiki's and fixed: `wiki/`,
+`raw/`, `inbox/`.
 
 Read `../_shared/profiles/<profile>.md`. Use its **Claims**, **Constraints** and **Syntax notes**
 sections; ignore **Voice** and **Variant axes** (those belong to wiki-rewrite). The Claims section
@@ -53,18 +54,18 @@ If you must sample, state the criterion.
 
 ## Step 3 - Verify, two tiers
 
-**Tier 1 - wiki.** Search `<knowledgeBase>/<wikiDir>/` for the concept, entity or cited work. The
-wiki is the first authority: it holds settled definitions and paper summaries.
+**Tier 1 - wiki.** Search `<knowledgeBase>/wiki/` for the concept, entity or cited work. The
+compiled layer is the first authority: it holds settled definitions and paper summaries.
 
 **Tier 2 - raw sources.** Only when a specific number, metric or finding is missing or
-unverifiable in the wiki. Resolve the draft's citation key to a file under
-`<knowledgeBase>/<rawDir>/`; for PDFs follow `../_shared/references/pdf-extraction.md`.
+unverifiable in the wiki. Resolve the draft's citation key to a source under
+`<knowledgeBase>/raw/`, following `../_shared/references/source-ingestion.md`.
 
-Conversions are cached permanently under `<knowledgeBase>/<convertedDir>/`. Before converting
-anything, check the cache, and grep the whole cache for the claim - across a multi-claim audit most
-sources are already there from earlier runs. Convert each source at most once per session, and
-**never delete anything in the cache**, not even a failed `.partial`; the next conversion
-overwrites it.
+Raw sources are read as the markdown `/wiki:ingest` produced, never parsed from a PDF here. A
+paper still sitting in `<knowledgeBase>/inbox/` is not ingested yet: never read the binary and
+never ingest on your own initiative. Collect every un-ingested match across the whole audit, then
+ask **once**, per `../_shared/references/asking-the-user.md`; ingest only what the user picks. Grep
+`raw/` broadly once - across a multi-claim audit most sources are already ingested.
 
 ## Step 4 - Categorise
 
@@ -73,7 +74,7 @@ overwrites it.
 | **Accurate** | Confirmed by wiki or raw source. |
 | **False** | Directly contradicted by wiki or raw source. |
 | **Needs nuance** | Misreads, over-rounds, drops a scope condition, or overstates the source. |
-| **Unverifiable** | Cited source absent from `rawDir`, or the assertion is not in it. |
+| **Unverifiable** | Cited source absent from `raw/` (or still un-ingested), or the assertion is not in it. |
 
 "I could not find it" is **Unverifiable**, never False. Contradiction requires a located source
 that says otherwise: quote it.
@@ -109,8 +110,8 @@ Structure:
    - the evidence quoted verbatim, with its wiki article or raw source path
    - for False and Needs nuance, a corrected rewrite in the draft's detected syntax
 4. **Accurate claims**: a compact list, no prose. They matter for coverage, not for reading.
-5. **Gaps**: citations that resolved to nothing, includes that failed, and sources whose
-   conversion failed.
+5. **Gaps**: citations that resolved to nothing, includes that failed, and sources sitting
+   un-ingested in `inbox/`, with the `/wiki:ingest` command that would pull them in.
 
 Then print to chat: the report path, the verdict counts, and the three findings most worth acting
 on. Do not paste the whole report into the conversation.
@@ -118,5 +119,8 @@ on. Do not paste the whole report into the conversation.
 ## Constraints
 
 - Modify the draft **never**. This skill writes exactly one file, the report.
+- Write nothing into the knowledge base unasked. Ingestion is llm-wiki's job and the user's
+  decision: ask first (`../_shared/references/asking-the-user.md`), `/wiki:ingest` only on an
+  explicit yes.
 - Quote evidence; never summarise a source into a verdict.
 - Do not flag style, wording or structure. That is wiki-rewrite's job; say so and move on.

@@ -1,7 +1,7 @@
 ---
 description: Rewrite or expand a draft section, returning N distinct propositions grounded in your LLM-wiki.
 argument-hint: <file:line> [n] [academic|outreach|technical|engineering|plain]
-allowed-tools: Bash(cat *), Bash(ls *), Bash(grep *), Bash(sed *), Bash(find *), Bash(npx @pspdfkit/pdf-to-markdown *), Read, Skill
+allowed-tools: Bash(cat *), Bash(ls *), Bash(grep *), Bash(sed *), Bash(find *), Read, AskUserQuestion, Skill
 ---
 
 Invoke the `wiki-rewrite` skill and follow it end to end.

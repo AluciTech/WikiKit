@@ -1,7 +1,7 @@
 ---
 description: Fact-check a draft against your LLM-wiki and write a versioned report.
 argument-hint: <file|file:start-end> [academic|outreach|technical|engineering|plain]
-allowed-tools: Bash(cat *), Bash(ls *), Bash(grep *), Bash(sed *), Bash(find *), Bash(npx @pspdfkit/pdf-to-markdown *), Bash(mkdir *), Read, Write, Skill
+allowed-tools: Bash(cat *), Bash(ls *), Bash(grep *), Bash(sed *), Bash(find *), Bash(mkdir *), Read, Write, AskUserQuestion, Skill
 ---
 
 Invoke the `wiki-check` skill and follow it end to end.
