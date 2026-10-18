@@ -48,13 +48,13 @@ Run the install script with your agent's folder as the destination. It installs
 `commands/` and `skills/` under it:
 
 ```bash
-curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/install.sh | bash -s -- .claude
+curl -fsSL https://github.com/AluciTech/WikiKit/releases/latest/download/install.sh | bash -s -- .claude
 ```
 
 To pin a specific version:
 
 ```bash
-curl -fsSL https://github.com/AluciTech/wiki-scitools/releases/latest/download/install.sh | bash -s -- --version v1.1.0 .claude
+curl -fsSL https://github.com/AluciTech/WikiKit/releases/latest/download/install.sh | bash -s -- --version v1.1.0 .claude
 ```
 
 The script asks before overwriting a file you already have. `--no-config` skips
