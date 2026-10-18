@@ -1,7 +1,7 @@
 # WikiKit
 
 [![GitHub
-License](https://img.shields.io/github/license/AluciTech/wiki-scitools)](LICENSE)
+License](https://img.shields.io/github/license/AluciTech/WikiKit)](LICENSE)
 
 ## Overview
 
